@@ -4,7 +4,14 @@ import { resolve } from "node:path";
 export type ScreenReaderTestCase = {
   name: string;
   url: string;
-  titleContains: string;
+  titleContains?: string;
+  steps: ScreenReaderStep[];
+};
+
+export type ScreenReaderStep = {
+  name: string;
+  action: "reportFocus" | "tab";
+  speechContains: string;
 };
 
 export type ScreenReaderConfig = {
@@ -53,6 +60,36 @@ function validateUrl(value: string, path: string) {
   return parsed.href;
 }
 
+function parseStep(
+  input: unknown,
+  source: string,
+  index: number,
+): ScreenReaderStep {
+  if (!isRecord(input)) {
+    throw new Error(`${source} must be an object.`);
+  }
+
+  const action = requireString(input.action, `${source}.action`);
+  if (action !== "reportFocus" && action !== "tab") {
+    throw new Error(`${source}.action must be "reportFocus" or "tab".`);
+  }
+
+  const speechContains = requireString(
+    input.speechContains,
+    `${source}.speechContains`,
+  );
+  const name =
+    input.name === undefined
+      ? `${index + 1}-${action}`
+      : requireString(input.name, `${source}.name`);
+
+  return {
+    name,
+    action,
+    speechContains,
+  };
+}
+
 export function parseScreenReaderConfig(
   input: unknown,
   source = "screen reader config",
@@ -79,10 +116,29 @@ export function parseScreenReaderConfig(
       requireString(testCase.url, `${testPath}.url`),
       `${testPath}.url`,
     );
-    const titleContains = requireString(
-      testCase.titleContains,
-      `${testPath}.titleContains`,
-    );
+    const titleContains =
+      testCase.titleContains === undefined
+        ? undefined
+        : requireString(testCase.titleContains, `${testPath}.titleContains`);
+    const steps =
+      testCase.steps === undefined
+        ? []
+        : Array.isArray(testCase.steps)
+          ? testCase.steps.map((step, stepIndex) =>
+              parseStep(step, `${testPath}.steps[${stepIndex}]`, stepIndex),
+            )
+          : undefined;
+
+    if (!steps) {
+      throw new Error(`${testPath}.steps must be an array when provided.`);
+    }
+
+    if (!titleContains && steps.length === 0) {
+      throw new Error(
+        `${testPath} must define titleContains or at least one step.`,
+      );
+    }
+
     const rawName =
       testCase.name === undefined
         ? defaultTestName(url, index)
@@ -92,6 +148,7 @@ export function parseScreenReaderConfig(
       name: rawName,
       url,
       titleContains,
+      steps,
     };
   });
 

@@ -20,7 +20,24 @@ bun run test:sr -- test-configs/my-site.json
     {
       "name": "acne-home",
       "url": "https://www.acnestudios.com/se/en/home",
-      "titleContains": "Acne"
+      "titleContains": "Acne",
+      "steps": [
+        {
+          "name": "cookie-settings-focused",
+          "action": "reportFocus",
+          "speechContains": "Cookie settings"
+        },
+        {
+          "name": "tab-to-continue-without-accepting",
+          "action": "tab",
+          "speechContains": "Continue without accepting"
+        },
+        {
+          "name": "tab-to-accept-cookies",
+          "action": "tab",
+          "speechContains": "Accept all cookies"
+        }
+      ]
     }
   ]
 }
@@ -31,10 +48,23 @@ Fields:
 - `version`: Required. Must be `1`.
 - `tests`: Required. A non-empty array of test cases.
 - `tests[].url`: Required. The `http` or `https` URL to open.
-- `tests[].titleContains`: Required. Text NVDA must speak after reporting the
+- `tests[].titleContains`: Optional. Text NVDA must speak after reporting the
   active page title.
+- `tests[].steps`: Optional. Interaction steps to run after the page opens.
+  A test must define `titleContains` or at least one step.
 - `tests[].name`: Optional. Used for Playwright test names and artifact file
   names. If omitted, a name is generated from the URL.
+- `tests[].steps[].name`: Optional. Used in reports. If omitted, a name is
+  generated from the step index and action.
+- `tests[].steps[].action`: Required. Supported values are `reportFocus` and
+  `tab`.
+- `tests[].steps[].speechContains`: Required. Text NVDA must speak after the
+  action runs.
+
+`reportFocus` asks NVDA to announce the currently focused element. `tab` presses
+the Tab key and captures the resulting NVDA speech. Assertions are based on
+NVDA speech, not DOM text. `titleContains` and `speechContains` matches are
+case-insensitive.
 
 Each test writes artifacts under `artifacts/screen-reader` using the test name:
 

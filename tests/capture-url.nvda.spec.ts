@@ -6,6 +6,7 @@ import { windowsActivate } from "@guidepup/guidepup";
 import { nvdaTest as test } from "@guidepup/playwright";
 
 import { loadScreenReaderConfig } from "../scripts/screen-reader-config.ts";
+import type { ScreenReaderStep } from "../scripts/screen-reader-config.ts";
 
 const artifactDir = join("artifacts", "screen-reader");
 const browserApplications: Record<string, { path: string; title: string }> = {
@@ -19,6 +20,51 @@ function artifactBaseName(name: string) {
     .toLowerCase();
 
   return `${slug || "capture"}.nvda`;
+}
+
+function speechIncludes(actual: string, expected: string) {
+  return actual.toLocaleLowerCase().includes(expected.toLocaleLowerCase());
+}
+
+type StepResult = {
+  name: string;
+  action: ScreenReaderStep["action"];
+  speechContains: string;
+  speech: string[];
+  speechText: string;
+};
+
+type StepNvda = {
+  keyboardCommands: {
+    reportCurrentFocus: unknown;
+  };
+  clearSpokenPhraseLog(): Promise<void>;
+  perform(command: unknown): Promise<void>;
+  press(key: string): Promise<void>;
+  spokenPhraseLog(): Promise<string[]>;
+};
+
+async function runStep(
+  step: ScreenReaderStep,
+  nvda: StepNvda,
+): Promise<StepResult> {
+  await nvda.clearSpokenPhraseLog();
+
+  if (step.action === "reportFocus") {
+    await nvda.perform(nvda.keyboardCommands.reportCurrentFocus);
+  } else {
+    await nvda.press("Tab");
+  }
+
+  const speech = await nvda.spokenPhraseLog();
+
+  return {
+    name: step.name,
+    action: step.action,
+    speechContains: step.speechContains,
+    speech,
+    speechText: speech.join(" "),
+  };
 }
 
 test.skip(process.platform !== "win32", "NVDA automation requires Windows.");
@@ -36,7 +82,7 @@ if (!screenReaderConfig) {
   });
 } else {
   for (const testCase of screenReaderConfig.tests) {
-    test(`opens URL and checks title speech: ${testCase.name}`, async ({
+    test(`opens URL and checks screen reader speech: ${testCase.name}`, async ({
       browserName,
       page,
       nvda,
@@ -57,10 +103,20 @@ if (!screenReaderConfig) {
       }
 
       await page.bringToFront();
-      await nvda.clearSpokenPhraseLog();
-      await nvda.perform(nvda.keyboardCommands.reportTitle);
-      const titleSpeech = await nvda.spokenPhraseLog();
-      const titleSpeechText = titleSpeech.join(" ");
+      const titleSpeech = [];
+      let titleSpeechText = "";
+
+      if (testCase.titleContains) {
+        await nvda.clearSpokenPhraseLog();
+        await nvda.perform(nvda.keyboardCommands.reportTitle);
+        titleSpeech.push(...(await nvda.spokenPhraseLog()));
+        titleSpeechText = titleSpeech.join(" ");
+      }
+
+      const stepResults = [];
+      for (const step of testCase.steps) {
+        stepResults.push(await runStep(step, nvda));
+      }
 
       const result = {
         capturedAt: new Date().toISOString(),
@@ -71,10 +127,25 @@ if (!screenReaderConfig) {
         screenReader: "NVDA",
         expected: {
           titleSpeechContains: testCase.titleContains,
+          steps: testCase.steps.map((step) => ({
+            name: step.name,
+            action: step.action,
+            speechContains: step.speechContains,
+          })),
         },
         actual: {
-          titleSpeech,
-          titleSpeechText,
+          ...(testCase.titleContains
+            ? {
+                titleSpeech,
+                titleSpeechText,
+              }
+            : {}),
+          steps: stepResults.map((step) => ({
+            name: step.name,
+            action: step.action,
+            speech: step.speech,
+            speechText: step.speechText,
+          })),
         },
         diagnostics: {
           landingSpeech,
@@ -95,10 +166,22 @@ if (!screenReaderConfig) {
           `URL: ${testCase.url}`,
           "",
           "Expected:",
-          `- title speech contains: ${testCase.titleContains}`,
+          ...(testCase.titleContains
+            ? [`- title speech contains: ${testCase.titleContains}`]
+            : []),
+          ...testCase.steps.map(
+            (step) =>
+              `- step "${step.name}" ${step.action} speech contains: ${step.speechContains}`,
+          ),
           "",
           "Actual:",
-          `- title speech text: ${titleSpeechText}`,
+          ...(testCase.titleContains
+            ? [`- title speech text: ${titleSpeechText}`]
+            : []),
+          ...stepResults.map(
+            (step) =>
+              `- step "${step.name}" ${step.action} speech text: ${step.speechText}`,
+          ),
           "",
           "Diagnostics:",
           "Landing speech:",
@@ -107,10 +190,19 @@ if (!screenReaderConfig) {
         ].join("\n"),
       );
 
-      expect(
-        titleSpeechText.includes(testCase.titleContains),
-        `NVDA title speech should include "${testCase.titleContains}"`,
-      ).toBe(true);
+      if (testCase.titleContains) {
+        expect(
+          speechIncludes(titleSpeechText, testCase.titleContains),
+          `NVDA title speech should include "${testCase.titleContains}"`,
+        ).toBe(true);
+      }
+
+      for (const step of stepResults) {
+        expect(
+          speechIncludes(step.speechText, step.speechContains),
+          `Step "${step.name}" speech should include "${step.speechContains}"`,
+        ).toBe(true);
+      }
     });
   }
 }

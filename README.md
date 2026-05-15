@@ -15,9 +15,9 @@ announcements, not only against DOM structure or ARIA attributes.
 
 ## Current Example
 
-The current script opens a provided URL, captures NVDA's landing speech, asks
-NVDA to announce the active page title, checks that the spoken title output
-includes the configured expected title text, and writes transcript artifacts.
+The current script opens configured URLs, captures NVDA speech, runs configured
+screen reader interactions such as reporting focus or pressing Tab, checks the
+spoken output against expectations, and writes transcript artifacts.
 
 ```bash
 bun run test:sr -- test-configs/acne-studios.json
