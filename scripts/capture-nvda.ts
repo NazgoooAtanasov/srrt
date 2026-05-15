@@ -1,23 +1,20 @@
-const rawUrl = process.argv[2];
+import { loadScreenReaderConfig } from "./screen-reader-config.ts";
 
-if (!rawUrl) {
-  console.error("Usage: bun run test:sr -- <url>");
+const configPath = process.argv[2];
+
+if (!configPath) {
+  console.error("Usage: bun run test:sr -- <config-path>");
   console.error(
-    "Example: bun run test:sr -- https://www.acnestudios.com/se/en/home",
+    "Example: bun run test:sr -- test-configs/acne-studios.json",
   );
   process.exit(1);
 }
 
-let targetUrl: URL;
 try {
-  targetUrl = new URL(rawUrl);
-} catch {
-  console.error(`Invalid URL: ${rawUrl}`);
-  process.exit(1);
-}
-
-if (!["http:", "https:"].includes(targetUrl.protocol)) {
-  console.error(`Unsupported URL protocol: ${targetUrl.protocol}`);
+  loadScreenReaderConfig(configPath);
+} catch (error) {
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(message);
   process.exit(1);
 }
 
@@ -32,7 +29,7 @@ const child = Bun.spawn({
   ],
   env: {
     ...process.env,
-    SR_CAPTURE_URL: targetUrl.href,
+    SR_CAPTURE_CONFIG: configPath,
   },
   stdout: "inherit",
   stderr: "inherit",

@@ -15,18 +15,19 @@ announcements, not only against DOM structure or ARIA attributes.
 
 ## Current Example
 
-The current script opens a provided URL, captures NVDA's landing speech, moves to
-the first heading, captures that announcement, and writes transcript artifacts.
+The current script opens a provided URL, captures NVDA's landing speech, asks
+NVDA to announce the active page title, checks that the spoken title output
+includes the configured expected title text, and writes transcript artifacts.
 
 ```bash
-bun run test:sr -- https://www.acnestudios.com/se/en/home
+bun run test:sr -- test-configs/acne-studios.json
 ```
 
-For that URL, output is written to:
+For a test named `acne-home`, output is written to:
 
 ```txt
-artifacts/screen-reader/www-acnestudios-com-se-en-home.nvda.json
-artifacts/screen-reader/www-acnestudios-com-se-en-home.nvda.txt
+artifacts/screen-reader/acne-home.nvda.json
+artifacts/screen-reader/acne-home.nvda.txt
 ```
 
 ## Requirements
@@ -66,19 +67,21 @@ bun run setup:sr
 
 ## Run
 
-Pass the URL as the first argument:
+Pass a screen reader test config path as the first argument:
 
 ```bash
-bun run test:sr -- <url>
+bun run test:sr -- <config-path>
 ```
 
 Example:
 
 ```bash
-bun run test:sr -- https://www.acnestudios.com/se/en/home
+bun run test:sr -- test-configs/acne-studios.json
 ```
 
 The test is skipped on non-Windows platforms because NVDA is Windows-only.
+Config files live under `test-configs`; see `test-configs/README.md` for the
+schema. Local JSON config files in that directory are ignored by Git.
 
 ## Output
 
@@ -96,9 +99,9 @@ The captured data includes:
 - browser
 - screen reader
 - timestamp
-- landing speech
-- first heading announcement
-- heading navigation speech log
+- expected result
+- actual result
+- diagnostics
 
 ## Notes
 

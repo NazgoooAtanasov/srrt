@@ -2,13 +2,18 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { expect } from "@playwright/test";
+import { windowsActivate } from "@guidepup/guidepup";
 import { nvdaTest as test } from "@guidepup/playwright";
 
-const artifactDir = join("artifacts", "screen-reader");
+import { loadScreenReaderConfig } from "../scripts/screen-reader-config.ts";
 
-function artifactBaseName(url: string) {
-  const parsed = new URL(url);
-  const slug = `${parsed.hostname}${parsed.pathname}`
+const artifactDir = join("artifacts", "screen-reader");
+const browserApplications: Record<string, { path: string; title: string }> = {
+  chromium: { path: "chrome.exe", title: "Google Chrome For Testing" },
+};
+
+function artifactBaseName(name: string) {
+  const slug = name
     .replace(/[^a-z0-9]+/gi, "-")
     .replace(/^-|-$/g, "")
     .toLowerCase();
@@ -18,76 +23,94 @@ function artifactBaseName(url: string) {
 
 test.skip(process.platform !== "win32", "NVDA automation requires Windows.");
 
-test("captures landing speech and first heading", async ({
-  page,
-  nvda,
-}) => {
-  const url = process.env.SR_CAPTURE_URL;
-  if (!url) {
-    throw new Error("Missing SR_CAPTURE_URL. Run: bun run test:sr -- <url>");
-  }
+const configPath = process.env.SR_CAPTURE_CONFIG;
+const screenReaderConfig = configPath
+  ? loadScreenReaderConfig(configPath)
+  : undefined;
 
-  await page.goto(url, { waitUntil: "domcontentloaded" });
-  await page.bringToFront();
-  await page.waitForLoadState("networkidle", { timeout: 30_000 }).catch(() => {
-    // Retail pages often keep analytics and personalization requests open.
+if (!screenReaderConfig) {
+  test("requires a screen reader config", async () => {
+    throw new Error(
+      "Missing SR_CAPTURE_CONFIG. Run: bun run test:sr -- <config-path>",
+    );
   });
+} else {
+  for (const testCase of screenReaderConfig.tests) {
+    test(`opens URL and checks title speech: ${testCase.name}`, async ({
+      browserName,
+      page,
+      nvda,
+    }) => {
+      await page.goto(testCase.url, { waitUntil: "domcontentloaded" });
+      await page.bringToFront();
 
-  const landingSpeech = await nvda.spokenPhraseLog();
+      await page
+        .waitForLoadState("networkidle", { timeout: 3_000 })
+        .catch(() => {
+          // Retail pages often keep analytics and personalization requests open.
+        });
 
-  await page.bringToFront();
-  await nvda.perform(nvda.keyboardCommands.exitFocusMode);
-  await page.keyboard.press("Control+Home");
-  await nvda.clearItemTextLog();
-  await nvda.clearSpokenPhraseLog();
+      const landingSpeech = await nvda.spokenPhraseLog();
+      const browserApplication = browserApplications[browserName];
+      if (browserApplication) {
+        await windowsActivate(browserApplication.path, browserApplication.title);
+      }
 
-  let headingAnnouncement = "";
-  for (let attempt = 0; attempt < 20; attempt++) {
-    await nvda.perform(nvda.keyboardCommands.moveToNextHeading);
-    const phrase = await nvda.lastSpokenPhrase();
+      await page.bringToFront();
+      await nvda.clearSpokenPhraseLog();
+      await nvda.perform(nvda.keyboardCommands.reportTitle);
+      const titleSpeech = await nvda.spokenPhraseLog();
+      const titleSpeechText = titleSpeech.join(" ");
 
-    if (phrase.toLowerCase().includes("heading")) {
-      headingAnnouncement = phrase;
-      break;
-    }
+      const result = {
+        capturedAt: new Date().toISOString(),
+        configPath,
+        testName: testCase.name,
+        url: testCase.url,
+        browser: browserName,
+        screenReader: "NVDA",
+        expected: {
+          titleSpeechContains: testCase.titleContains,
+        },
+        actual: {
+          titleSpeech,
+          titleSpeechText,
+        },
+        diagnostics: {
+          landingSpeech,
+        },
+      };
+
+      await mkdir(artifactDir, { recursive: true });
+      const baseName = artifactBaseName(testCase.name);
+
+      await writeFile(
+        join(artifactDir, `${baseName}.json`),
+        `${JSON.stringify(result, null, 2)}\n`,
+      );
+      await writeFile(
+        join(artifactDir, `${baseName}.txt`),
+        [
+          `Test: ${testCase.name}`,
+          `URL: ${testCase.url}`,
+          "",
+          "Expected:",
+          `- title speech contains: ${testCase.titleContains}`,
+          "",
+          "Actual:",
+          `- title speech text: ${titleSpeechText}`,
+          "",
+          "Diagnostics:",
+          "Landing speech:",
+          ...landingSpeech.map((phrase) => `- ${phrase}`),
+          "",
+        ].join("\n"),
+      );
+
+      expect(
+        titleSpeechText.includes(testCase.titleContains),
+        `NVDA title speech should include "${testCase.titleContains}"`,
+      ).toBe(true);
+    });
   }
-
-  const headingSpeech = await nvda.spokenPhraseLog();
-  const result = {
-    capturedAt: new Date().toISOString(),
-    url,
-    browser: "chromium",
-    screenReader: "NVDA",
-    landingSpeech,
-    headingAnnouncement,
-    headingSpeech,
-  };
-
-  await mkdir(artifactDir, { recursive: true });
-  const baseName = artifactBaseName(url);
-
-  await writeFile(
-    join(artifactDir, `${baseName}.json`),
-    `${JSON.stringify(result, null, 2)}\n`,
-  );
-  await writeFile(
-    join(artifactDir, `${baseName}.txt`),
-    [
-      `URL: ${url}`,
-      "",
-      "Landing speech:",
-      ...landingSpeech.map((phrase) => `- ${phrase}`),
-      "",
-      "First heading announcement:",
-      headingAnnouncement,
-      "",
-      "Heading navigation speech:",
-      ...headingSpeech.map((phrase) => `- ${phrase}`),
-      "",
-    ].join("\n"),
-  );
-
-  expect(headingAnnouncement, "NVDA should announce a heading").toContain(
-    "heading",
-  );
-});
+}

@@ -9,6 +9,10 @@ playwright-report
 test-results
 *.tgz
 
+# local screen reader test configs
+test-configs/*.json
+!test-configs/README.md
+
 # code coverage
 coverage
 *.lcov
