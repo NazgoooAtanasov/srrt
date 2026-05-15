@@ -20,14 +20,14 @@ screen reader interactions such as reporting focus or pressing Tab, checks the
 spoken output against expectations, and writes transcript artifacts.
 
 ```bash
-bun run test:sr -- test-configs/acne-studios.json
+bun run test:sr -- test-configs/example-flow.json
 ```
 
-For a test named `acne-home`, output is written to:
+For a test named `example-flow`, output is written to:
 
 ```txt
-artifacts/screen-reader/acne-home.nvda.json
-artifacts/screen-reader/acne-home.nvda.txt
+artifacts/screen-reader/example-flow.nvda.json
+artifacts/screen-reader/example-flow.nvda.txt
 ```
 
 ## Requirements
@@ -76,7 +76,7 @@ bun run test:sr -- <config-path>
 Example:
 
 ```bash
-bun run test:sr -- test-configs/acne-studios.json
+bun run test:sr -- test-configs/example-flow.json
 ```
 
 The test is skipped on non-Windows platforms because NVDA is Windows-only.
@@ -87,8 +87,8 @@ schema. Local JSON config files in that directory are ignored by Git.
 
 Each run writes two files under `artifacts/screen-reader`:
 
-- `<url-slug>.nvda.json`
-- `<url-slug>.nvda.txt`
+- `<test-name>.nvda.json`
+- `<test-name>.nvda.txt`
 
 The JSON file is intended for tooling. The text file is intended for quick human
 review.
