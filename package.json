@@ -1,0 +1,20 @@
+{
+  "name": "automated-a11y",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "install:browsers": "playwright install chromium",
+    "setup:sr": "bunx @guidepup/setup",
+    "test:sr": "bun run scripts/capture-nvda.ts"
+  },
+  "devDependencies": {
+    "@guidepup/guidepup": "^0.24.1",
+    "@guidepup/playwright": "^0.15.0",
+    "@playwright/test": "^1.60.0",
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}
