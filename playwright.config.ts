@@ -1,4 +1,4 @@
-import { devices, defineConfig } from "@playwright/test";
+import { defineConfig } from "@playwright/test";
 import { screenReaderConfig } from "@guidepup/playwright";
 
 export default defineConfig({
@@ -12,7 +12,7 @@ export default defineConfig({
     {
       name: "chromium-nvda",
       use: {
-        ...devices["Desktop Chrome"],
+        browserName: "chromium",
         headless: false,
         viewport: null,
         launchOptions: {
