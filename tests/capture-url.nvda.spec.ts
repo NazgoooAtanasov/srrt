@@ -28,13 +28,18 @@ test("captures landing speech and first heading", async ({
   }
 
   await page.goto(url, { waitUntil: "domcontentloaded" });
+  await page.bringToFront();
   await page.waitForLoadState("networkidle", { timeout: 30_000 }).catch(() => {
     // Retail pages often keep analytics and personalization requests open.
   });
 
   const landingSpeech = await nvda.spokenPhraseLog();
 
-  await nvda.navigateToWebContent();
+  await page.bringToFront();
+  await nvda.perform(nvda.keyboardCommands.exitFocusMode);
+  await page.keyboard.press("Control+Home");
+  await nvda.clearItemTextLog();
+  await nvda.clearSpokenPhraseLog();
 
   let headingAnnouncement = "";
   for (let attempt = 0; attempt < 20; attempt++) {
