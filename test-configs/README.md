@@ -18,34 +18,31 @@ bun run test:sr -- test-configs/my-site.json
   "version": 1,
   "tests": [
     {
-      "name": "acne-home",
-      "url": "https://www.acnestudios.com/se/en/home",
-      "titleContains": "Acne",
+      "name": "example-home",
+      "url": "https://www.example.com/",
+      "titleContains": "Example",
       "steps": [
         {
-          "name": "cookie-settings-focused",
+          "name": "initial-focus",
           "action": "reportFocus",
-          "speechContains": "Cookie settings"
+          "speechContains": "Example focused control"
         },
         {
-          "name": "tab-to-continue-without-accepting",
+          "name": "tab-to-next-control",
           "action": "tab",
-          "speechContains": "Continue without accepting"
+          "speechContains": "Next control"
         },
         {
-          "name": "tab-to-accept-cookies",
-          "action": "tab",
-          "speechContains": "Accept all cookies"
-        },
-        {
-          "name": "accept-cookies",
+          "name": "activate-current-control",
           "action": "activate",
-          "speechContains": "Select location dialog"
+          "speechContains": "Example dialog"
         },
         {
-          "name": "location-dialog-close-focused",
-          "action": "reportFocus",
-          "speechContains": "Close button"
+          "name": "focus-first-option",
+          "action": "focusSelector",
+          "selector": "[data-example-option]",
+          "index": 1,
+          "speechContains": "Example option"
         }
       ]
     }
@@ -53,10 +50,13 @@ bun run test:sr -- test-configs/my-site.json
 }
 ```
 
-Fields:
+## Top-Level Fields
 
 - `version`: Required. Must be `1`.
 - `tests`: Required. A non-empty array of test cases.
+
+## Test Case Fields
+
 - `tests[].url`: Required. The `http` or `https` URL to open.
 - `tests[].titleContains`: Optional. Text NVDA must speak after reporting the
   active page title.
@@ -64,18 +64,67 @@ Fields:
   A test must define `titleContains` or at least one step.
 - `tests[].name`: Optional. Used for Playwright test names and artifact file
   names. If omitted, a name is generated from the URL.
+
+## Step Fields
+
 - `tests[].steps[].name`: Optional. Used in reports. If omitted, a name is
   generated from the step index and action.
 - `tests[].steps[].action`: Required. Supported values are `reportFocus`,
-  `tab`, and `activate`.
+  `tab`, `activate`, and `focusSelector`.
 - `tests[].steps[].speechContains`: Required. Text NVDA must speak after the
   action runs.
+- `tests[].steps[].selector`: Required for `focusSelector`. CSS selector for
+  the element to focus. This is used only to move browser focus.
+- `tests[].steps[].index`: Optional for `focusSelector`. 1-based match index
+  for selectors that match multiple elements. Defaults to `1`.
 
-`reportFocus` asks NVDA to announce the currently focused element. `tab` presses
-the Tab key and captures the resulting NVDA speech. `activate` performs the
-default action for the currently focused item. Assertions are based on NVDA
-speech, not DOM text. `titleContains` and `speechContains` matches are
-case-insensitive and ignore punctuation differences.
+`index` starts at `1`, not `0`. For example, `"index": 2` focuses the second
+element matched by `selector`.
+
+## Actions
+
+- `reportFocus`: Asks NVDA to announce the currently focused element.
+- `tab`: Presses the Tab key and captures the resulting NVDA speech.
+- `activate`: Performs the default action for the currently focused item.
+- `focusSelector`: Uses a DOM selector to move browser focus, then asks NVDA to
+  report that focused item.
+
+Assertions are based on NVDA speech, not DOM text. `focusSelector` is the only
+step that uses a DOM selector, and it uses the selector only to place focus.
+`titleContains` and `speechContains` matches are case-insensitive and ignore
+punctuation differences.
+
+## Selector Focus Example
+
+This focuses the second matching option, validates the announcement, activates
+that option, then focuses another control:
+
+```json
+{
+  "name": "example-selector-flow",
+  "url": "https://www.example.com/product",
+  "steps": [
+    {
+      "name": "focus-second-option",
+      "action": "focusSelector",
+      "selector": "[data-example-option]",
+      "index": 2,
+      "speechContains": "Example option"
+    },
+    {
+      "name": "activate-second-option",
+      "action": "activate",
+      "speechContains": "checked"
+    },
+    {
+      "name": "focus-submit",
+      "action": "focusSelector",
+      "selector": "[data-example-submit]",
+      "speechContains": "Submit"
+    }
+  ]
+}
+```
 
 Each test writes artifacts under `artifacts/screen-reader` using the test name:
 

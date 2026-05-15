@@ -2,6 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { expect } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import { windowsActivate } from "@guidepup/guidepup";
 import { nvdaTest as test } from "@guidepup/playwright";
 
@@ -37,6 +38,8 @@ type StepResult = {
   name: string;
   action: ScreenReaderStep["action"];
   speechContains: string;
+  selector?: string;
+  index: number;
   speech: string[];
   speechText: string;
 };
@@ -55,6 +58,7 @@ type StepNvda = {
 async function runStep(
   step: ScreenReaderStep,
   nvda: StepNvda,
+  page: Page,
 ): Promise<StepResult> {
   await nvda.clearSpokenPhraseLog();
 
@@ -62,8 +66,19 @@ async function runStep(
     await nvda.perform(nvda.keyboardCommands.reportCurrentFocus);
   } else if (step.action === "tab") {
     await nvda.press("Tab");
-  } else {
+  } else if (step.action === "activate") {
     await nvda.act();
+  } else {
+    const selector = step.selector;
+    if (!selector) {
+      throw new Error(`Step "${step.name}" is missing selector.`);
+    }
+
+    const element = page.locator(selector).nth(step.index - 1);
+    await element.waitFor({ state: "visible", timeout: 10_000 });
+    await element.scrollIntoViewIfNeeded();
+    await element.focus();
+    await nvda.perform(nvda.keyboardCommands.reportCurrentFocus);
   }
 
   const speech = await nvda.spokenPhraseLog();
@@ -72,6 +87,8 @@ async function runStep(
     name: step.name,
     action: step.action,
     speechContains: step.speechContains,
+    selector: step.selector,
+    index: step.index,
     speech,
     speechText: speech.join(" "),
   };
@@ -125,7 +142,7 @@ if (!screenReaderConfig) {
 
       const stepResults = [];
       for (const step of testCase.steps) {
-        stepResults.push(await runStep(step, nvda));
+        stepResults.push(await runStep(step, nvda, page));
       }
 
       const result = {
@@ -140,6 +157,12 @@ if (!screenReaderConfig) {
           steps: testCase.steps.map((step) => ({
             name: step.name,
             action: step.action,
+            ...(step.selector
+              ? {
+                  selector: step.selector,
+                  index: step.index,
+                }
+              : {}),
             speechContains: step.speechContains,
           })),
         },
@@ -153,6 +176,12 @@ if (!screenReaderConfig) {
           steps: stepResults.map((step) => ({
             name: step.name,
             action: step.action,
+            ...(step.selector
+              ? {
+                  selector: step.selector,
+                  index: step.index,
+                }
+              : {}),
             speech: step.speech,
             speechText: step.speechText,
           })),
@@ -181,7 +210,7 @@ if (!screenReaderConfig) {
             : []),
           ...testCase.steps.map(
             (step) =>
-              `- step "${step.name}" ${step.action} speech contains: ${step.speechContains}`,
+              `- step "${step.name}" ${step.action}${step.selector ? ` ${step.selector} [${step.index}]` : ""} speech contains: ${step.speechContains}`,
           ),
           "",
           "Actual:",
@@ -190,7 +219,7 @@ if (!screenReaderConfig) {
             : []),
           ...stepResults.map(
             (step) =>
-              `- step "${step.name}" ${step.action} speech text: ${step.speechText}`,
+              `- step "${step.name}" ${step.action}${step.selector ? ` ${step.selector} [${step.index}]` : ""} speech text: ${step.speechText}`,
           ),
           "",
           "Diagnostics:",

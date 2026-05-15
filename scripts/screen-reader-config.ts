@@ -10,8 +10,10 @@ export type ScreenReaderTestCase = {
 
 export type ScreenReaderStep = {
   name: string;
-  action: "reportFocus" | "tab" | "activate";
+  action: "reportFocus" | "tab" | "activate" | "focusSelector";
   speechContains: string;
+  selector?: string;
+  index: number;
 };
 
 export type ScreenReaderConfig = {
@@ -60,6 +62,18 @@ function validateUrl(value: string, path: string) {
   return parsed.href;
 }
 
+function optionalPositiveInteger(value: unknown, path: string) {
+  if (value === undefined) {
+    return 1;
+  }
+
+  if (!Number.isInteger(value) || typeof value !== "number" || value < 1) {
+    throw new Error(`${path} must be a positive integer starting from 1.`);
+  }
+
+  return value;
+}
+
 function parseStep(
   input: unknown,
   source: string,
@@ -70,12 +84,22 @@ function parseStep(
   }
 
   const action = requireString(input.action, `${source}.action`);
-  if (action !== "reportFocus" && action !== "tab" && action !== "activate") {
+  if (
+    action !== "reportFocus" &&
+    action !== "tab" &&
+    action !== "activate" &&
+    action !== "focusSelector"
+  ) {
     throw new Error(
-      `${source}.action must be "reportFocus", "tab", or "activate".`,
+      `${source}.action must be "reportFocus", "tab", "activate", or "focusSelector".`,
     );
   }
 
+  const selector =
+    action === "focusSelector"
+      ? requireString(input.selector, `${source}.selector`)
+      : undefined;
+  const stepIndex = optionalPositiveInteger(input.index, `${source}.index`);
   const speechContains = requireString(
     input.speechContains,
     `${source}.speechContains`,
@@ -89,6 +113,8 @@ function parseStep(
     name,
     action,
     speechContains,
+    selector,
+    index: stepIndex,
   };
 }
 
