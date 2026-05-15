@@ -36,6 +36,16 @@ bun run test:sr -- test-configs/my-site.json
           "name": "tab-to-accept-cookies",
           "action": "tab",
           "speechContains": "Accept all cookies"
+        },
+        {
+          "name": "accept-cookies",
+          "action": "activate",
+          "speechContains": "Select location dialog"
+        },
+        {
+          "name": "location-dialog-close-focused",
+          "action": "reportFocus",
+          "speechContains": "Close button"
         }
       ]
     }
@@ -56,15 +66,16 @@ Fields:
   names. If omitted, a name is generated from the URL.
 - `tests[].steps[].name`: Optional. Used in reports. If omitted, a name is
   generated from the step index and action.
-- `tests[].steps[].action`: Required. Supported values are `reportFocus` and
-  `tab`.
+- `tests[].steps[].action`: Required. Supported values are `reportFocus`,
+  `tab`, and `activate`.
 - `tests[].steps[].speechContains`: Required. Text NVDA must speak after the
   action runs.
 
 `reportFocus` asks NVDA to announce the currently focused element. `tab` presses
-the Tab key and captures the resulting NVDA speech. Assertions are based on
-NVDA speech, not DOM text. `titleContains` and `speechContains` matches are
-case-insensitive.
+the Tab key and captures the resulting NVDA speech. `activate` performs the
+default action for the currently focused item. Assertions are based on NVDA
+speech, not DOM text. `titleContains` and `speechContains` matches are
+case-insensitive and ignore punctuation differences.
 
 Each test writes artifacts under `artifacts/screen-reader` using the test name:
 

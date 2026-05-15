@@ -10,7 +10,7 @@ export type ScreenReaderTestCase = {
 
 export type ScreenReaderStep = {
   name: string;
-  action: "reportFocus" | "tab";
+  action: "reportFocus" | "tab" | "activate";
   speechContains: string;
 };
 
@@ -70,8 +70,10 @@ function parseStep(
   }
 
   const action = requireString(input.action, `${source}.action`);
-  if (action !== "reportFocus" && action !== "tab") {
-    throw new Error(`${source}.action must be "reportFocus" or "tab".`);
+  if (action !== "reportFocus" && action !== "tab" && action !== "activate") {
+    throw new Error(
+      `${source}.action must be "reportFocus", "tab", or "activate".`,
+    );
   }
 
   const speechContains = requireString(

@@ -23,7 +23,14 @@ function artifactBaseName(name: string) {
 }
 
 function speechIncludes(actual: string, expected: string) {
-  return actual.toLocaleLowerCase().includes(expected.toLocaleLowerCase());
+  const normalizeSpeech = (value: string) =>
+    value
+      .toLocaleLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim()
+      .replace(/\s+/g, " ");
+
+  return normalizeSpeech(actual).includes(normalizeSpeech(expected));
 }
 
 type StepResult = {
@@ -41,6 +48,7 @@ type StepNvda = {
   clearSpokenPhraseLog(): Promise<void>;
   perform(command: unknown): Promise<void>;
   press(key: string): Promise<void>;
+  act(): Promise<void>;
   spokenPhraseLog(): Promise<string[]>;
 };
 
@@ -52,8 +60,10 @@ async function runStep(
 
   if (step.action === "reportFocus") {
     await nvda.perform(nvda.keyboardCommands.reportCurrentFocus);
-  } else {
+  } else if (step.action === "tab") {
     await nvda.press("Tab");
+  } else {
+    await nvda.act();
   }
 
   const speech = await nvda.spokenPhraseLog();
