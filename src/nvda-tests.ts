@@ -7,7 +7,10 @@ import { windowsActivate } from "@guidepup/guidepup";
 import { nvdaTest as test } from "@guidepup/playwright";
 
 import { parseScreenReaderConfig } from "./screen-reader-config.ts";
-import type { ScreenReaderStep } from "./screen-reader-config.ts";
+import type {
+  ScreenReaderConfigInput,
+  ScreenReaderStep,
+} from "./screen-reader-config.ts";
 
 export type DefineNvdaTestsOptions = {
   artifactDir?: string;
@@ -44,7 +47,7 @@ type StepResult = {
   action: ScreenReaderStep["action"];
   speechContains: string;
   selector?: string;
-  index: number;
+  index?: number;
   speech: string[];
   speechText: string;
 };
@@ -101,7 +104,7 @@ async function runStep(
 }
 
 export function defineNvdaTests(
-  configInput: unknown,
+  configInput: ScreenReaderConfigInput,
   options: DefineNvdaTestsOptions = {},
 ) {
   const source = options.source ?? "screen reader config";

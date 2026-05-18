@@ -15,14 +15,38 @@ announcements, not only against DOM structure or ARIA attributes.
 
 ## Library Example
 
-Create a Playwright spec file that imports a JSON config and registers the NVDA
+Create a Playwright spec file that defines a typed config and registers the NVDA
 tests from that config:
 
 ```ts
-import config from "../test-configs/example-flow.json";
-import { defineNvdaTests } from "../index.ts";
+import { defineNvdaTests, defineScreenReaderConfig } from "../index.ts";
 
-defineNvdaTests(config, { source: "test-configs/example-flow.json" });
+const config = defineScreenReaderConfig({
+  version: 1,
+  tests: [
+    {
+      name: "example-home",
+      url: "https://www.example.com/",
+      titleContains: "Example",
+      steps: [
+        {
+          name: "initial-focus",
+          action: "reportFocus",
+          speechContains: "Example focused control",
+        },
+        {
+          name: "focus-first-option",
+          action: "focusSelector",
+          selector: "[data-example-option]",
+          index: 1,
+          speechContains: "Example option",
+        },
+      ],
+    },
+  ],
+});
+
+defineNvdaTests(config, { source: "example-home config" });
 ```
 
 Run all specs in the `tests` directory:
@@ -39,7 +63,7 @@ The second argument is optional:
 
 ```ts
 defineNvdaTests(config, {
-  source: "test-configs/example-flow.json",
+  source: "example-home config",
   artifactDir: "artifacts/screen-reader",
 });
 ```
@@ -48,14 +72,31 @@ defineNvdaTests(config, {
 - `artifactDir`: Optional output directory for `.nvda.json` and `.nvda.txt`
   artifacts. Defaults to `artifacts/screen-reader`.
 
-When this package is consumed as a dependency, import from the package name
-instead:
+When this package is consumed as a dependency, import from the package name:
 
 ```ts
-import config from "./test-configs/example-flow.json";
-import { defineNvdaTests } from "automated-a11y";
+import {
+  defineNvdaTests,
+  defineScreenReaderConfig,
+} from "automated-a11y";
 
-defineNvdaTests(config, { source: "test-configs/example-flow.json" });
+const config = defineScreenReaderConfig({
+  version: 1,
+  tests: [
+    {
+      url: "https://www.example.com/product",
+      steps: [
+        {
+          action: "focusSelector",
+          selector: "[data-example-submit]",
+          speechContains: "Submit",
+        },
+      ],
+    },
+  ],
+});
+
+defineNvdaTests(config, { source: "product flow config" });
 ```
 
 For a test named `example-flow`, output is written to:
@@ -64,6 +105,162 @@ For a test named `example-flow`, output is written to:
 artifacts/screen-reader/example-flow.nvda.json
 artifacts/screen-reader/example-flow.nvda.txt
 ```
+
+## Configuration
+
+Configs are TypeScript objects validated by Zod. Use
+`defineScreenReaderConfig` when declaring a config inline to get editor
+completion, hover documentation, and runtime validation at definition time.
+`defineNvdaTests` also validates the config before registering tests.
+
+The Zod schemas and TypeScript types are exported:
+
+- `screenReaderConfigSchema`
+- `screenReaderTestCaseSchema`
+- `screenReaderStepSchema`
+- `reportFocusStepSchema`
+- `tabStepSchema`
+- `activateStepSchema`
+- `focusSelectorStepSchema`
+- `ScreenReaderConfigInput`
+- `ScreenReaderTestCaseInput`
+- `ScreenReaderStepInput`
+
+### Full Config Example
+
+```ts
+import { defineScreenReaderConfig } from "automated-a11y";
+
+export const config = defineScreenReaderConfig({
+  version: 1,
+  tests: [
+    {
+      name: "example-home",
+      url: "https://www.example.com/",
+      titleContains: "Example",
+      steps: [
+        {
+          name: "initial-focus",
+          action: "reportFocus",
+          speechContains: "Example focused control",
+        },
+        {
+          name: "tab-to-next-control",
+          action: "tab",
+          speechContains: "Next control",
+        },
+        {
+          name: "activate-current-control",
+          action: "activate",
+          speechContains: "Example dialog",
+        },
+        {
+          name: "focus-first-option",
+          action: "focusSelector",
+          selector: "[data-example-option]",
+          index: 1,
+          speechContains: "Example option",
+        },
+      ],
+    },
+  ],
+});
+```
+
+### Top-Level Fields
+
+- `version`: Required. Must be `1`.
+- `tests`: Required. A non-empty array of test cases.
+
+### Test Case Fields
+
+- `tests[].url`: Required. The `http` or `https` URL to open.
+- `tests[].titleContains`: Optional. Text NVDA must speak after reporting the
+  active page title.
+- `tests[].steps`: Optional. Interaction steps to run after the page opens.
+  A test must define `titleContains` or at least one step.
+- `tests[].name`: Optional. Used for Playwright test names and artifact file
+  names. If omitted, a name is generated from the URL.
+
+### Step Fields
+
+- `tests[].steps[].name`: Optional. Used in reports. If omitted, a name is
+  generated from the step index and action.
+- `tests[].steps[].action`: Required. Supported values are `reportFocus`,
+  `tab`, `activate`, and `focusSelector`.
+- `tests[].steps[].speechContains`: Required. Text NVDA must speak after the
+  action runs.
+- `tests[].steps[].selector`: Required for `focusSelector`. CSS selector for
+  the element to focus. This is used only to move browser focus.
+- `tests[].steps[].index`: Optional for `focusSelector` only. 1-based match
+  index for selectors that match multiple elements. Defaults to `1`.
+
+`index` starts at `1`, not `0`. For example, `index: 2` focuses the second
+element matched by `selector`. `index` is not allowed on `reportFocus`, `tab`,
+or `activate` steps.
+
+### Actions
+
+- `reportFocus`: Asks NVDA to announce the currently focused element.
+- `tab`: Presses the Tab key and captures the resulting NVDA speech.
+- `activate`: Performs the default action for the currently focused item.
+- `focusSelector`: Uses a DOM selector to move browser focus, then asks NVDA to
+  report that focused item.
+
+Assertions are based on NVDA speech, not DOM text. `focusSelector` is the only
+step that uses a DOM selector, and it uses the selector only to place focus.
+`titleContains` and `speechContains` matches are case-insensitive and ignore
+punctuation differences.
+
+### Selector Focus Example
+
+This focuses the second matching option, validates the announcement, activates
+that option, then focuses another control:
+
+```ts
+import { defineScreenReaderConfig } from "automated-a11y";
+
+export const config = defineScreenReaderConfig({
+  version: 1,
+  tests: [
+    {
+      name: "example-selector-flow",
+      url: "https://www.example.com/product",
+      steps: [
+        {
+          name: "focus-second-option",
+          action: "focusSelector",
+          selector: "[data-example-option]",
+          index: 2,
+          speechContains: "Example option",
+        },
+        {
+          name: "activate-second-option",
+          action: "activate",
+          speechContains: "checked",
+        },
+        {
+          name: "focus-submit",
+          action: "focusSelector",
+          selector: "[data-example-submit]",
+          speechContains: "Submit",
+        },
+      ],
+    },
+  ],
+});
+```
+
+Each test writes artifacts under `artifacts/screen-reader` using the test name:
+
+- `<test-name>.nvda.json`
+- `<test-name>.nvda.txt`
+
+Artifacts include:
+
+- `expected`: the expected result from the config.
+- `actual`: the NVDA output used by the assertion.
+- `diagnostics`: extra captured speech useful when debugging failures.
 
 ## Requirements
 
@@ -102,7 +299,7 @@ bun run setup:sr
 
 ## Run
 
-Create spec files in the `tests` directory that import JSON configs and call
+Create spec files in the `tests` directory that define configs and call
 `defineNvdaTests`, then run all of them:
 
 ```bash
@@ -110,8 +307,6 @@ bun run test:sr
 ```
 
 The test is skipped on non-Windows platforms because NVDA is Windows-only.
-Config files live under `test-configs`; see `test-configs/README.md` for the
-schema. Local JSON config files in that directory are ignored by Git.
 
 ## Output
 
