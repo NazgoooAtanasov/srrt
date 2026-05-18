@@ -35,6 +35,19 @@ bun run test:sr
 screen reader interactions such as reporting focus or pressing Tab, checks the
 spoken output against expectations, and writes transcript artifacts.
 
+The second argument is optional:
+
+```ts
+defineNvdaTests(config, {
+  source: "test-configs/example-flow.json",
+  artifactDir: "artifacts/screen-reader",
+});
+```
+
+- `source`: Optional label used in validation errors and JSON artifacts.
+- `artifactDir`: Optional output directory for `.nvda.json` and `.nvda.txt`
+  artifacts. Defaults to `artifacts/screen-reader`.
+
 When this package is consumed as a dependency, import from the package name
 instead:
 
