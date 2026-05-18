@@ -6,10 +6,15 @@ import type { Page } from "@playwright/test";
 import { windowsActivate } from "@guidepup/guidepup";
 import { nvdaTest as test } from "@guidepup/playwright";
 
-import { loadScreenReaderConfig } from "../scripts/screen-reader-config.ts";
-import type { ScreenReaderStep } from "../scripts/screen-reader-config.ts";
+import { parseScreenReaderConfig } from "./screen-reader-config.ts";
+import type { ScreenReaderStep } from "./screen-reader-config.ts";
 
-const artifactDir = join("artifacts", "screen-reader");
+export type DefineNvdaTestsOptions = {
+  artifactDir?: string;
+  source?: string;
+};
+
+const defaultArtifactDir = join("artifacts", "screen-reader");
 const browserApplications: Record<string, { path: string; title: string }> = {
   chromium: { path: "chrome.exe", title: "Google Chrome For Testing" },
 };
@@ -47,6 +52,7 @@ type StepResult = {
 type StepNvda = {
   keyboardCommands: {
     reportCurrentFocus: unknown;
+    reportTitle: unknown;
   };
   clearSpokenPhraseLog(): Promise<void>;
   perform(command: unknown): Promise<void>;
@@ -94,26 +100,24 @@ async function runStep(
   };
 }
 
-test.skip(process.platform !== "win32", "NVDA automation requires Windows.");
+export function defineNvdaTests(
+  configInput: unknown,
+  options: DefineNvdaTestsOptions = {},
+) {
+  const source = options.source ?? "screen reader config";
+  const artifactDir = options.artifactDir ?? defaultArtifactDir;
+  const screenReaderConfig = parseScreenReaderConfig(configInput, source);
 
-const configPath = process.env.SR_CAPTURE_CONFIG;
-const screenReaderConfig = configPath
-  ? loadScreenReaderConfig(configPath)
-  : undefined;
+  test.skip(process.platform !== "win32", "NVDA automation requires Windows.");
 
-if (!screenReaderConfig) {
-  test("requires a screen reader config", async () => {
-    throw new Error(
-      "Missing SR_CAPTURE_CONFIG. Run: bun run test:sr -- <config-path>",
-    );
-  });
-} else {
   for (const testCase of screenReaderConfig.tests) {
     test(`opens URL and checks screen reader speech: ${testCase.name}`, async ({
       browserName,
       page,
       nvda,
     }) => {
+      const stepNvda = nvda as StepNvda;
+
       await page.goto(testCase.url, { waitUntil: "domcontentloaded" });
       await page.bringToFront();
 
@@ -123,31 +127,31 @@ if (!screenReaderConfig) {
           // Retail pages often keep analytics and personalization requests open.
         });
 
-      const landingSpeech = await nvda.spokenPhraseLog();
+      const landingSpeech = await stepNvda.spokenPhraseLog();
       const browserApplication = browserApplications[browserName];
       if (browserApplication) {
         await windowsActivate(browserApplication.path, browserApplication.title);
       }
 
       await page.bringToFront();
-      const titleSpeech = [];
+      const titleSpeech: string[] = [];
       let titleSpeechText = "";
 
       if (testCase.titleContains) {
-        await nvda.clearSpokenPhraseLog();
-        await nvda.perform(nvda.keyboardCommands.reportTitle);
-        titleSpeech.push(...(await nvda.spokenPhraseLog()));
+        await stepNvda.clearSpokenPhraseLog();
+        await stepNvda.perform(stepNvda.keyboardCommands.reportTitle);
+        titleSpeech.push(...(await stepNvda.spokenPhraseLog()));
         titleSpeechText = titleSpeech.join(" ");
       }
 
-      const stepResults = [];
+      const stepResults: StepResult[] = [];
       for (const step of testCase.steps) {
-        stepResults.push(await runStep(step, nvda, page));
+        stepResults.push(await runStep(step, stepNvda, page));
       }
 
       const result = {
         capturedAt: new Date().toISOString(),
-        configPath,
+        configPath: source,
         testName: testCase.name,
         url: testCase.url,
         browser: browserName,

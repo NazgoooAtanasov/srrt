@@ -13,14 +13,36 @@ The first target is deliberately narrow:
 The goal is to make critical accessibility flows testable against screen reader
 announcements, not only against DOM structure or ARIA attributes.
 
-## Current Example
+## Library Example
 
-The current script opens configured URLs, captures NVDA speech, runs configured
+Create a Playwright spec file that imports a JSON config and registers the NVDA
+tests from that config:
+
+```ts
+import config from "../test-configs/example-flow.json";
+import { defineNvdaTests } from "../index.ts";
+
+defineNvdaTests(config, { source: "test-configs/example-flow.json" });
+```
+
+Run all specs in the `tests` directory:
+
+```bash
+bun run test:sr
+```
+
+`defineNvdaTests` opens configured URLs, captures NVDA speech, runs configured
 screen reader interactions such as reporting focus or pressing Tab, checks the
 spoken output against expectations, and writes transcript artifacts.
 
-```bash
-bun run test:sr -- test-configs/example-flow.json
+When this package is consumed as a dependency, import from the package name
+instead:
+
+```ts
+import config from "./test-configs/example-flow.json";
+import { defineNvdaTests } from "automated-a11y";
+
+defineNvdaTests(config, { source: "test-configs/example-flow.json" });
 ```
 
 For a test named `example-flow`, output is written to:
@@ -67,16 +89,11 @@ bun run setup:sr
 
 ## Run
 
-Pass a screen reader test config path as the first argument:
+Create spec files in the `tests` directory that import JSON configs and call
+`defineNvdaTests`, then run all of them:
 
 ```bash
-bun run test:sr -- <config-path>
-```
-
-Example:
-
-```bash
-bun run test:sr -- test-configs/example-flow.json
+bun run test:sr
 ```
 
 The test is skipped on non-Windows platforms because NVDA is Windows-only.

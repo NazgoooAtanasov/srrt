@@ -7,8 +7,20 @@ specific to the site or flow being tested. This README documents the schema.
 
 ## Usage
 
+Create a Playwright spec file that imports one of these JSON files and registers
+the configured tests:
+
+```ts
+import config from "../test-configs/my-site.json";
+import { defineNvdaTests } from "../index.ts";
+
+defineNvdaTests(config, { source: "test-configs/my-site.json" });
+```
+
+Run all specs in the `tests` directory:
+
 ```bash
-bun run test:sr -- test-configs/my-site.json
+bun run test:sr
 ```
 
 ## Schema

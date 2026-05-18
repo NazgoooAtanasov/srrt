@@ -1,6 +1,3 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
-
 export type ScreenReaderTestCase = {
   name: string;
   url: string;
@@ -183,7 +180,9 @@ export function parseScreenReaderConfig(
   const seenNames = new Set<string>();
   for (const testCase of tests) {
     if (seenNames.has(testCase.name)) {
-      throw new Error(`${source}.tests contains duplicate name "${testCase.name}".`);
+      throw new Error(
+        `${source}.tests contains duplicate name "${testCase.name}".`,
+      );
     }
 
     seenNames.add(testCase.name);
@@ -193,26 +192,4 @@ export function parseScreenReaderConfig(
     version: 1,
     tests,
   };
-}
-
-export function loadScreenReaderConfig(configPath: string) {
-  const resolvedPath = resolve(configPath);
-  let rawConfig: string;
-
-  try {
-    rawConfig = readFileSync(resolvedPath, "utf8");
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`Could not read config file at ${resolvedPath}: ${message}`);
-  }
-
-  let parsedConfig: unknown;
-  try {
-    parsedConfig = JSON.parse(rawConfig);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`Could not parse JSON config at ${resolvedPath}: ${message}`);
-  }
-
-  return parseScreenReaderConfig(parsedConfig, resolvedPath);
 }
