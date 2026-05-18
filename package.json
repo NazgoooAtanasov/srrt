@@ -42,7 +42,7 @@
     "prebuild": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
     "build": "tsc -p tsconfig.build.json",
     "install:browsers": "playwright install chromium",
-    "prepack": "pnpm run build",
+    "prepare": "pnpm run build",
     "setup:sr": "pnpm dlx @guidepup/setup",
     "test:sr": "playwright test tests --config=playwright.config.ts",
     "typecheck": "tsc --noEmit"
