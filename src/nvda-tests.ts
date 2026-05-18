@@ -6,11 +6,11 @@ import type { Page } from "@playwright/test";
 import { windowsActivate } from "@guidepup/guidepup";
 import { nvdaTest as test } from "@guidepup/playwright";
 
-import { parseScreenReaderConfig } from "./screen-reader-config.ts";
+import { parseScreenReaderConfig } from "./screen-reader-config.js";
 import type {
   ScreenReaderConfigInput,
   ScreenReaderStep,
-} from "./screen-reader-config.ts";
+} from "./screen-reader-config.js";
 
 export type DefineNvdaTestsOptions = {
   artifactDir?: string;

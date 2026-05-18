@@ -1,29 +1,60 @@
 {
-  "name": "automated-a11y",
-  "module": "index.ts",
+  "name": "srrt",
+  "version": "0.1.0",
+  "description": "Screen reader regression testing helpers for Playwright and NVDA.",
   "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./index.ts",
-      "default": "./index.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./playwright": {
+      "types": "./dist/playwright.d.ts",
+      "import": "./dist/playwright.js",
+      "default": "./dist/playwright.js"
     }
   },
-  "private": true,
+  "bin": {
+    "srrt": "./dist/src/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "license": "UNLICENSED",
+  "keywords": [
+    "accessibility",
+    "a11y",
+    "screen-reader",
+    "nvda",
+    "playwright"
+  ],
+  "packageManager": "pnpm@10.15.1",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
+    "prebuild": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
+    "build": "tsc -p tsconfig.build.json",
     "install:browsers": "playwright install chromium",
-    "setup:sr": "bunx @guidepup/setup",
-    "test:sr": "bunx playwright test tests --config=playwright.config.ts"
+    "prepack": "pnpm run build",
+    "setup:sr": "pnpm dlx @guidepup/setup",
+    "test:sr": "playwright test tests --config=playwright.config.ts",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
-    "@guidepup/guidepup": "^0.24.1",
-    "@guidepup/playwright": "^0.15.0",
-    "@playwright/test": "^1.60.0",
-    "@types/bun": "latest"
-  },
-  "peerDependencies": {
+    "@types/node": "^25.8.0",
     "typescript": "^5"
   },
   "dependencies": {
+    "@guidepup/guidepup": "^0.24.1",
+    "@guidepup/playwright": "^0.15.0",
+    "@playwright/test": "^1.60.0",
     "zod": "^4.4.3"
   }
 }

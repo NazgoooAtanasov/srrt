@@ -1,5 +1,5 @@
-export { defineNvdaTests } from "./src/nvda-tests.ts";
-export type { DefineNvdaTestsOptions } from "./src/nvda-tests.ts";
+export { defineNvdaTests } from "./src/nvda-tests.js";
+export type { DefineNvdaTestsOptions } from "./src/nvda-tests.js";
 export {
   activateStepSchema,
   defineScreenReaderConfig,
@@ -10,7 +10,7 @@ export {
   screenReaderStepSchema,
   screenReaderTestCaseSchema,
   tabStepSchema,
-} from "./src/screen-reader-config.ts";
+} from "./src/screen-reader-config.js";
 export type {
   ActivateStepInput,
   FocusSelectorScreenReaderStep,
@@ -25,4 +25,4 @@ export type {
   ScreenReaderTestCase,
   ScreenReaderTestCaseInput,
   TabStepInput,
-} from "./src/screen-reader-config.ts";
+} from "./src/screen-reader-config.js";

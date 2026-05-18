@@ -8,10 +8,40 @@ The first target is deliberately narrow:
 - Windows
 - NVDA
 - Chromium through Playwright
-- Bun as the JavaScript runtime
+- Node.js 20 or newer
 
 The goal is to make critical accessibility flows testable against screen reader
 announcements, not only against DOM structure or ARIA attributes.
+
+## Install
+
+Install SRRT in a project that contains Playwright specs:
+
+```bash
+pnpm add --save-dev srrt
+```
+
+Install Chromium for Playwright:
+
+```bash
+pnpm exec srrt install-browsers
+```
+
+Set up NVDA automation through Guidepup:
+
+```bash
+pnpm exec srrt setup
+```
+
+Add a script to `package.json`:
+
+```json
+{
+  "scripts": {
+    "test:sr": "srrt test tests/sr"
+  }
+}
+```
 
 ## Library Example
 
@@ -19,7 +49,7 @@ Create a Playwright spec file that defines a typed config and registers the NVDA
 tests from that config:
 
 ```ts
-import { defineNvdaTests, defineScreenReaderConfig } from "../index.ts";
+import { defineNvdaTests, defineScreenReaderConfig } from "srrt";
 
 const config = defineScreenReaderConfig({
   version: 1,
@@ -49,10 +79,10 @@ const config = defineScreenReaderConfig({
 defineNvdaTests(config, { source: "example-home config" });
 ```
 
-Run all specs in the `tests` directory:
+Run all specs in the `tests/sr` directory:
 
 ```bash
-bun run test:sr
+pnpm test:sr
 ```
 
 `defineNvdaTests` opens configured URLs, captures NVDA speech, runs configured
@@ -72,13 +102,13 @@ defineNvdaTests(config, {
 - `artifactDir`: Optional output directory for `.nvda.json` and `.nvda.txt`
   artifacts. Defaults to `artifacts/screen-reader`.
 
-When this package is consumed as a dependency, import from the package name:
+You can also define smaller tests inline:
 
 ```ts
 import {
   defineNvdaTests,
   defineScreenReaderConfig,
-} from "automated-a11y";
+} from "srrt";
 
 const config = defineScreenReaderConfig({
   version: 1,
@@ -129,7 +159,7 @@ The Zod schemas and TypeScript types are exported:
 ### Full Config Example
 
 ```ts
-import { defineScreenReaderConfig } from "automated-a11y";
+import { defineScreenReaderConfig } from "srrt";
 
 export const config = defineScreenReaderConfig({
   version: 1,
@@ -218,7 +248,7 @@ This focuses the second matching option, validates the announcement, activates
 that option, then focuses another control:
 
 ```ts
-import { defineScreenReaderConfig } from "automated-a11y";
+import { defineScreenReaderConfig } from "srrt";
 
 export const config = defineScreenReaderConfig({
   version: 1,
@@ -274,39 +304,78 @@ Recommended environment:
 
 - Windows 10, Windows 11, or Windows Server
 - PowerShell or Command Prompt
-- Bun
+- Node.js 20 or newer
 - NVDA setup through Guidepup
 
 ## Setup
 
-Install dependencies:
+For a consuming project, install the package:
 
 ```bash
-bun install
+pnpm add --save-dev srrt
 ```
 
 Install the Playwright browser:
 
 ```bash
-bun run install:browsers
+pnpm exec srrt install-browsers
 ```
 
 Set up screen reader automation:
 
 ```bash
-bun run setup:sr
+pnpm exec srrt setup
 ```
 
 ## Run
 
-Create spec files in the `tests` directory that define configs and call
+Create spec files in the `tests/sr` directory that define configs and call
 `defineNvdaTests`, then run all of them:
 
 ```bash
-bun run test:sr
+pnpm test:sr
 ```
 
 The test is skipped on non-Windows platforms because NVDA is Windows-only.
+
+### CLI
+
+The package installs a `srrt` command:
+
+```bash
+srrt test tests/sr
+```
+
+By default, `srrt test` runs Playwright with SRRT's NVDA configuration:
+
+- Guidepup screen reader fixtures enabled.
+- Chromium project named `chromium-nvda`.
+- Headed browser mode.
+- Maximized Chromium window.
+- `test-results` Playwright output directory.
+
+Additional Playwright arguments are passed through:
+
+```bash
+srrt test tests/sr --grep checkout
+```
+
+If you need custom Playwright settings, pass your own config:
+
+```bash
+srrt test tests/sr --config playwright.config.ts
+```
+
+You can reuse SRRT's default Playwright config in that file:
+
+```ts
+import { defineScreenReaderPlaywrightConfig } from "srrt/playwright";
+
+export default defineScreenReaderPlaywrightConfig({
+  timeout: 180_000,
+  retries: 1,
+});
+```
 
 ## Output
 
